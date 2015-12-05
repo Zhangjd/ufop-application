@@ -6,7 +6,7 @@ import (
 	"github.com/qiniu/log"
 	"os"
 	"ufop"
-	"ufop/foo"
+	"ufop/videomerge"
 )
 
 const (
@@ -49,7 +49,7 @@ func main() {
 	ufopServ := ufop.NewServer(ufopConf)
 
 	//register job handlers
-	if err := ufopServ.RegisterJobHandler("foo.conf", &foo.VideoMerger{}); err != nil {
+	if err := ufopServ.RegisterJobHandler("videomerge.conf", &videomerge.VideoMerger{}); err != nil {
 		log.Error(err)
 	}
 
