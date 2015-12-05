@@ -1,13 +1,15 @@
 # ufop-demo
 七牛ufop服务demo
 
-### Configure
+## Configure
+
 ```
 go get -u github.com/qiniu/api.v6
 go get -u golang.org/x/text/encoding/simplifiedchinese
 ```
 
-### Local test
+## Local test
+
 ```
 POST /uop HTTP/1.1
 Content-Type: application/json
@@ -21,10 +23,12 @@ Content-Type: application/json
 }
 ```
 
-### TODO
+## TODO
+
 视频合成逻辑
 
-### License
+## License
+
 This project is published under MIT License. See the LICENSE file for more.
 
 
