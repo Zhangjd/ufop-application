@@ -1,0 +1,6 @@
+{
+    "access_key": "<Access Key>",
+    "secret_key": "<Secret Key>",
+    "amerge_max_first_file_length":104857600,
+    "amerge_max_second_file_length":104857600
+}
