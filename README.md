@@ -12,7 +12,7 @@ go get -u golang.org/x/text/encoding/simplifiedchinese
 
 * 设置环境变量 $GOPATH 和 $GOBIN
 * 修改build.sh中的环境变量
-* 重命名deploy/*.conf.example为deploy/*.conf, 写入自定义配置
+* 重命名deploy文件夹中 \*.conf.example为 \*.conf, 写入自定义配置
 * 本地调试版本请进入src目录, 执行go install qufop.go
 * 部署远程版本请进入src目录, 执行./build.sh
 
