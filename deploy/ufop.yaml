@@ -1,4 +1,10 @@
 image: ubuntu
 build_script:
-    - mv $RESOURCE/* .
-run: ./qufop ./qufop.conf
+  - echo building...
+  - sudo mv $RESOURCE/ffmpeg/bin/ffmpeg /usr/local/bin/
+  - sudo mv $RESOURCE/ffmpeg/lib/* /lib/x86_64-linux-gnu/
+  - mv $RESOURCE/qufop .
+  - mv $RESOURCE/videomerge.conf .
+  - mv $RESOURCE/qufop.conf .
+  - mv $RESOURCE/ufop.yaml .
+run: ./qufop qufop.conf
