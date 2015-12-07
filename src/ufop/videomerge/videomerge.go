@@ -19,6 +19,7 @@ import (
     "net/http"
     "net/url"
     "os"
+    "os/exec"
     "regexp"
     "strings"
     "ufop"
@@ -255,48 +256,49 @@ func (this *VideoMerger) Do(req ufop.UfopRequest) (result interface{}, resultTyp
     defer os.Remove(sTmpFname)
 
     // prepare for ffmpeg
-    // mergeCmdParams := []string{
-    //     "-y",
-    //     "-v", "error",
-    //     "-i", fTmpFname,
-    //     "-i", sTmpFname,
-    //     "-filter_complex", fmt.Sprintf("amix=inputs=2:duration=%s:dropout_transition=2", dstDuration),
-    //     "-f", dstFormat,
-    //     oTmpFname,
-    // }
+    mergeCmdParams := []string{
+        "-y",
+        "-v", "error",
+        "-i", fTmpFname,
+        "-i", sTmpFname,
+        // "-filter_complex", fmt.Sprintf("amix=inputs=2:duration=%s:dropout_transition=2", dstDuration),
+        "-filter_complex", fmt.Sprintf("[0:v:0]pad=iw*2:ih[bg]; [bg][1:v:0]overlay=w"),
+        "-f", dstFormat,
+        oTmpFname,
+    }
 
     // execute command
-    // mergeCmd := exec.Command("ffmpeg", mergeCmdParams...)
-    // stdErrPipe, pipeErr := mergeCmd.StderrPipe()
-    // if pipeErr != nil {
-    //     err = errors.New(fmt.Sprintf("open exec stderr pipe error, %s", pipeErr.Error()))
-    //     return
-    // }
-    // if startErr := mergeCmd.Start(); startErr != nil {
-    //     err = errors.New(fmt.Sprintf("start ffmpeg command error, %s", startErr.Error()))
-    //     return
-    // }
-    // stdErrData, readErr := ioutil.ReadAll(stdErrPipe)
-    // if readErr != nil {
-    //     err = errors.New(fmt.Sprintf("read ffmpeg command stderr error, %s", readErr.Error()))
-    //     defer os.Remove(oTmpFname)
-    //     return
-    // }
+    mergeCmd := exec.Command("ffmpeg", mergeCmdParams...)
+    stdErrPipe, pipeErr := mergeCmd.StderrPipe()
+    if pipeErr != nil {
+        err = errors.New(fmt.Sprintf("open exec stderr pipe error, %s", pipeErr.Error()))
+        return
+    }
+    if startErr := mergeCmd.Start(); startErr != nil {
+        err = errors.New(fmt.Sprintf("start ffmpeg command error, %s", startErr.Error()))
+        return
+    }
+    stdErrData, readErr := ioutil.ReadAll(stdErrPipe)
+    if readErr != nil {
+        err = errors.New(fmt.Sprintf("read ffmpeg command stderr error, %s", readErr.Error()))
+        defer os.Remove(oTmpFname)
+        return
+    }
 
     // check stderr output & output file
-    // if string(stdErrData) != "" {
-    //     log.Error(string(stdErrData))
-    // }
-    // if waitErr := mergeCmd.Wait(); waitErr != nil {
-    //     err = errors.New(fmt.Sprintf("wait ffmpeg to exit error, %s", waitErr))
-    //     defer os.Remove(oTmpFname)
-    //     return
-    // }
-    // if oFileInfo, statErr := os.Stat(oTmpFname); statErr != nil || oFileInfo.Size() == 0 {
-    //     err = errors.New("audio merge with no valid output result")
-    //     defer os.Remove(oTmpFname)
-    //     return
-    // }
+    if string(stdErrData) != "" {
+        log.Error(string(stdErrData))
+    }
+    if waitErr := mergeCmd.Wait(); waitErr != nil {
+        err = errors.New(fmt.Sprintf("wait ffmpeg to exit error, %s", waitErr))
+        defer os.Remove(oTmpFname)
+        return
+    }
+    if oFileInfo, statErr := os.Stat(oTmpFname); statErr != nil || oFileInfo.Size() == 0 {
+        err = errors.New("audio merge with no valid output result")
+        defer os.Remove(oTmpFname)
+        return
+    }
 
     // write result
     result = oTmpFname
