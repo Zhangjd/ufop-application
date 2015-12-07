@@ -2,7 +2,7 @@
  * Author: Zhangjd
  * Date: December 5th, 2015
  * Reference: http://developer.qiniu.com/docs/v6/api/reference/fop/pfop/pfop.html
- * Description: 模拟调用七牛触发持久化处理（pfop）接口
+ * Description: 视频合成模块
  */
 
 package videomerge

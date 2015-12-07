@@ -7,6 +7,7 @@ import (
 	"os"
 	"ufop"
 	"ufop/videomerge"
+	"ufop/wavemix"
 )
 
 const (
@@ -50,6 +51,10 @@ func main() {
 
 	//register job handlers
 	if err := ufopServ.RegisterJobHandler("videomerge.conf", &videomerge.VideoMerger{}); err != nil {
+		log.Error(err)
+	}
+
+	if err := ufopServ.RegisterJobHandler("wavemix.conf", &wavemix.AudioMerger{}); err != nil {
 		log.Error(err)
 	}
 
