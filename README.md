@@ -41,8 +41,8 @@ http://developer.qiniu.com/docs/v6/api/reference/fop/pfop/pfop.html
 http://developer.qiniu.com/docs/v6/api/reference/fop/pfop/prefop.html
 
 1. 触发持久化处理(pfop)，接口返回的\<persistentId>
-2. 七牛服务端按顺序完成所有指定的云处理操作后，会将处理结果状态提交到\<persistentNotifyUrl>指向的网址，供用户
-3. 用户可以使用\<persistentId>来主动查询持久化处理的执行状态
+2. 七牛服务端按顺序完成所有指定的云处理操作后，会将处理结果状态提交到\<persistentNotifyUrl>指向的网址，用作异步回调处理
+3. 客户端可以使用\<persistentId>来主动查询持久化处理的执行状态
 
 ## Module usage
 
@@ -65,7 +65,7 @@ Params - description:
 ### 视频声波合成
 
 ```
-TODO
+// TODO
 ```
 
 ## License
