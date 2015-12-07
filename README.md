@@ -18,6 +18,8 @@ go get -u golang.org/x/text/encoding/simplifiedchinese
 
 ## Local test
 
+Command: qufop \<qufop-config-file>
+
 ```
 POST /uop HTTP/1.1
 Content-Type: application/json
@@ -44,7 +46,7 @@ http://developer.qiniu.com/docs/v6/api/reference/fop/pfop/prefop.html
 
 ## Module usage
 
-### 视频画面左右合成
+### 视频合成 (画面左右放置, 分别占一半大小)
 
 ```
 Option:
