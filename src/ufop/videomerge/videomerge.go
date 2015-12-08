@@ -96,7 +96,7 @@ func (this *VideoMerger) InitConfig(jobConf string) (err error) {
  * @return {error}  err  [输出格式]
  */
 func (this *VideoMerger) parse(cmd string) (format string, mime string, bucket string, url string, duration string, err error) {
-    // 正则匹配
+    // validate command
     // pattern := "^videomerge/format/[a-zA-Z0-9]+/mime/[0-9a-zA-Z-_=]+/bucket/[0-9a-zA-Z-_=]+/url/[0-9a-zA-Z-_=]+(/duration/(first|shortest|longest)){0,1}$"
     pattern := "^videomerge/format/[a-zA-Z0-9]+/mime/[0-9a-zA-Z-_=]+/bucket/[0-9a-zA-Z-_=]+/url/[0-9a-zA-Z-_=]+$"
     matched, _ := regexp.MatchString(pattern, cmd)
@@ -104,32 +104,39 @@ func (this *VideoMerger) parse(cmd string) (format string, mime string, bucket s
         err = errors.New("invalid videomerge command format")
         return
     }
+
     var decodeErr error
-    // 获取格式
+
+    // retrive output format
     format = utils.GetParam(cmd, "format/[a-zA-Z0-9]+", "format")
-    // 获取Mime-Type
+
+    // retrive Mime-Type
     mime, decodeErr = utils.GetParamDecoded(cmd, "mime/[0-9a-zA-Z-_=]+", "mime")
     if decodeErr != nil {
         err = errors.New("invalid amerge parameter 'mime'")
         return
     }
-    // 获取bucket
+
+    // retrive bucket name
     bucket, decodeErr = utils.GetParamDecoded(cmd, "bucket/[0-9a-zA-Z-_=]+", "bucket")
     if decodeErr != nil {
         err = errors.New("invalid amerge parameter 'bucket'")
         return
     }
-    // 获取文件url
+
+    // retrive the second file url
     url, decodeErr = utils.GetParamDecoded(cmd, "url/[0-9a-zA-Z-_=]+", "url")
     if decodeErr != nil {
         err = errors.New("invalid amerge parameter 'url'")
         return
     }
-    // 获取duration
+
+    // retrive duration
     duration = utils.GetParam(cmd, "duration/(first|shortest|longest)", "duration")
     if duration == "" {
         duration = "longest"
     }
+
     return
 }
 
@@ -261,7 +268,6 @@ func (this *VideoMerger) Do(req ufop.UfopRequest) (result interface{}, resultTyp
         "-v", "error",
         "-i", fTmpFname,
         "-i", sTmpFname,
-        // "-filter_complex", fmt.Sprintf("amix=inputs=2:duration=%s:dropout_transition=2", dstDuration),
         "-filter_complex", fmt.Sprintf("[0:v:0]pad=iw*2:ih[bg]; [bg][1:v:0]overlay=w"),
         "-f", dstFormat,
         oTmpFname,
@@ -304,8 +310,6 @@ func (this *VideoMerger) Do(req ufop.UfopRequest) (result interface{}, resultTyp
     result = oTmpFname
     resultType = ufop.RESULT_TYPE_OCTECT
     contentType = dstMime
-
-    log.Info(result)
 
     return
 }
