@@ -54,7 +54,7 @@ func main() {
 		log.Error(err)
 	}
 
-	if err := ufopServ.RegisterJobHandler("wavemix.conf", &wavemix.AudioMerger{}); err != nil {
+	if err := ufopServ.RegisterJobHandler("wavemix.conf", &wavemix.WaveMixer{}); err != nil {
 		log.Error(err)
 	}
 
