@@ -1,6 +1,6 @@
 /**
 * Author: Zhangjd
-* Date: December 12th, 2015
+* Date: December 13th, 2015
 * Description: Sound synthesis and wave file generation in Golang
 * Reference: https://github.com/sk89q/WavForge
 */
@@ -15,11 +15,27 @@ import (
 )
 
 type WavForge struct {
-    channels      int     // Store the number of channels to be generated.
-    sampleRate    float64 // The sample rate at which the sample_count will be generated at.
-    bitsPerSample float64 // Maximum number of bits per sample.
-    sampleCount   int     // Store the number of samples that have been generated.
-    output        string  // Contains the samples.
+    channels       int      // Store the number of channels to be generated.
+    sampleRate     float64  // The sample rate at which the sample_count will be generated at.
+    bitsPerSample  float64  // Maximum number of bits per sample.
+    sampleCount    int      // Store the number of samples that have been generated.
+    output         string   // Contains the samples.
+}
+
+type WavHeader struct {
+    flag_RIFF         string   // [0,4]  ChunkID "RIFF"
+    chunkSize         uint32   // [4,4]  ChunkSize
+    flag_WAVE         string   // [8,4]  Format "WAVE"
+    flag_fmt          string   // [12,4] Subchunk1ID "fmt"
+    subchunk_1_size   uint32   // [16,4] Subchunk1Size: 16 for PCM
+    wFormatTag        uint16   // [20,2] AudioFormat: 1 for PCM
+    wChannels         uint16   // [22,2] NumChannels: 1 for mono, 2 for stereo
+    dwSamplesPerSec   uint32   // [24,4] SampleRate（每秒样本数）
+    dwAvgBytesPerSec  uint32   // [28,4] 每秒播放字节数, 其值为通道数×每秒数据位数×每样本的数据位数／8
+    wBlockAlign       uint16   // [32,2] 数据块的调整数, 其值为通道数×每样本的数据位值／8
+    uiBitsPerSample   uint16   // [34,2] BitsPerSample
+    flag_data         string   // [36,4] Subchunk1ID＂data＂
+    subchunk_2_size   uint32   // [40,4] Subchunk2Size
 }
 
 func (this *WavForge) InitConfig() () {
@@ -59,12 +75,44 @@ func (this *WavForge) getSampleCount () (int) {
 }
 
 
-func getWavData () () {
-
+func (this *WavForge) getWavData () (string) {
+    return this.getWavHeader() + this.output
 }
 
-func getWavHeader () () {
+func (this *WavForge) getWavHeader () (header string) {
+    subchunk_2_size := (float64(this.getSampleCount())) * (float64(this.channels)) * this.bitsPerSample / 8
 
+    var wavHeader WavHeader
+    wavHeader.flag_RIFF        = "RIFF"
+    wavHeader.chunkSize        = uint32(subchunk_2_size + 36)
+    wavHeader.flag_WAVE        = "WAVE"
+    wavHeader.flag_fmt         = "fmt"
+    wavHeader.subchunk_1_size  = 16
+    wavHeader.wFormatTag       = 1
+    wavHeader.wChannels        = uint16(this.channels)
+    wavHeader.dwSamplesPerSec  = uint32(this.sampleRate)
+    wavHeader.dwAvgBytesPerSec = uint32(this.sampleRate * (float64(this.channels)) * this.bitsPerSample / 8)
+    wavHeader.wBlockAlign      = uint16((float64(this.channels)) * this.bitsPerSample / 8)
+    wavHeader.uiBitsPerSample  = uint16(this.bitsPerSample)
+    wavHeader.flag_data        = "data"
+    wavHeader.subchunk_2_size  = uint32(subchunk_2_size)
+
+    header = fmt.Sprintf("%s%d%s%s%d%d%d%d%d%d%d%s%d",
+        wavHeader.flag_RIFF,
+        wavHeader.chunkSize,
+        wavHeader.flag_WAVE,
+        wavHeader.flag_fmt,
+        wavHeader.subchunk_1_size,
+        wavHeader.wFormatTag,
+        wavHeader.wChannels,
+        wavHeader.dwSamplesPerSec,
+        wavHeader.dwAvgBytesPerSec,
+        wavHeader.wBlockAlign,
+        wavHeader.uiBitsPerSample,
+        wavHeader.flag_data,
+        wavHeader.subchunk_2_size,
+    )
+    return 
 }
 
 // Encodes a sample
