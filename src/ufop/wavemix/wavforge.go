@@ -1,15 +1,16 @@
 /**
-* Author: Zhangjd
-* Date: December 13th, 2015
-* Description: Sound synthesis and wave file generation in Golang
-* Reference: https://github.com/sk89q/WavForge
-*/
+ * Author: Zhangjd
+ * Date: December 13th, 2015
+ * Description: Sound synthesis and wave file generation in Golang
+ * Reference: https://github.com/sk89q/WavForge
+ */
 
 package wavemix
 
 import (
     "errors"
     "fmt"
+    "github.com/qiniu/log"
     "math"
     "strings"
 )
@@ -44,10 +45,12 @@ func (this *WavForge) InitConfig() () {
     this.bitsPerSample = 16
     this.sampleCount = 0
     this.output = ""
+    return
 }
 
 func (this *WavForge) SetChannels (channels int) () {
     this.channels = channels
+    return
 }
 
 func (this *WavForge) getChannels () (int) {
@@ -56,6 +59,7 @@ func (this *WavForge) getChannels () (int) {
 
 func (this *WavForge) SetSampleRate (sampleRate float64) () {
     this.sampleRate = sampleRate
+    return
 }
 
 func (this *WavForge) getSampleRate () (float64) {
@@ -64,6 +68,7 @@ func (this *WavForge) getSampleRate () (float64) {
 
 func (this *WavForge) SetBitsPerSample (bitsPerSample float64) () {
     this.bitsPerSample = bitsPerSample
+    return
 }
 
 func (this *WavForge) getBitsPerSample () (float64) {
@@ -133,7 +138,7 @@ func (this *WavForge) EncodeSample (number float64) (encodedStr string, err erro
     for {
         charSlice = append(charSlice, (string(rune((int(math.Floor(number))) % 256))))
         number = math.Floor(number / 256)
-        if number > 0 {
+        if number <= 0 {
             break
         }
     }
@@ -170,11 +175,11 @@ func (this *WavForge) synthesizeSine (frequency float64, volume float64, seconds
         this.output += strings.Repeat(encodedStr, this.channels)
         this.sampleCount++
     }
-
+    return
 }
 
 
-func (this *WavForge) createWave (result string, err error) {
+func (this *WavForge) CreateWave () (result string, err error) {
     baseFrequency := 18000
     characters    := "0123456789abcdefghijklmnopqrstuv"
     period        := 0.0872
@@ -183,7 +188,7 @@ func (this *WavForge) createWave (result string, err error) {
         frequency[i] = float64(baseFrequency + i * 64)
     }
 
-    testCode := "uv0123456789abcdefgh"
+    testCode := "uv8e463l175lsiijdq4t"
     for i := 0; i < len(testCode); i++ {
         char := testCode[i]
         pos := strings.Index(characters, (string(char)))

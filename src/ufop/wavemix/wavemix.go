@@ -13,6 +13,7 @@ import (
     "io/ioutil"
     "github.com/qiniu/api.v6/auth/digest"
     "github.com/qiniu/log"
+    "os"
     "os/exec"
     "regexp"
     "strings"
@@ -47,6 +48,24 @@ func (this *WaveMixer) Do(req ufop.UfopRequest) (result interface{}, resultType 
         return
     }
     log.Info(duration)
+
+    var wav WavForge
+    wav.InitConfig()
+    wav.CreateWave()
+    output := wav.getWavData()
+    // fmt.Println(output)
+    
+    userFile := "test.wav"
+    // Create creates the named file with mode 0666 (before umask), truncating it if it already exists
+    fout, err := os.Create(userFile)
+    defer fout.Close()
+    if err != nil {
+        fmt.Println(userFile, err)
+        return
+    }
+    fout.WriteString(output)
+
+
     return
 }
 
