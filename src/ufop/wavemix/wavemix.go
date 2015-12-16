@@ -63,8 +63,7 @@ func (this *WaveMixer) Do(req ufop.UfopRequest) (result interface{}, resultType 
         fmt.Println(userFile, err)
         return
     }
-    fout.WriteString(output)
-
+    fout.Write(output)
 
     return
 }

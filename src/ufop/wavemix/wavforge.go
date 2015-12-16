@@ -10,9 +10,10 @@ package wavemix
 import (
     "errors"
     "fmt"
-    "github.com/qiniu/log"
+    // "github.com/qiniu/log"
     "math"
     "strings"
+    "unsafe"
 )
 
 type WavForge struct {
@@ -24,10 +25,10 @@ type WavForge struct {
 }
 
 type WavHeader struct {
-    flag_RIFF         string   // [0,4]  ChunkID "RIFF"
+    flag_RIFF[4]      byte     // [0,4]  ChunkID "RIFF"
     chunkSize         uint32   // [4,4]  ChunkSize
-    flag_WAVE         string   // [8,4]  Format "WAVE"
-    flag_fmt          string   // [12,4] Subchunk1ID "fmt"
+    flag_WAVE[4]      byte     // [8,4]  Format "WAVE"
+    flag_fmt[3]       byte     // [12,4] Subchunk1ID "fmt"
     subchunk_1_size   uint32   // [16,4] Subchunk1Size: 16 for PCM
     wFormatTag        uint16   // [20,2] AudioFormat: 1 for PCM
     wChannels         uint16   // [22,2] NumChannels: 1 for mono, 2 for stereo
@@ -35,7 +36,7 @@ type WavHeader struct {
     dwAvgBytesPerSec  uint32   // [28,4] 每秒播放字节数, 其值为通道数×每秒数据位数×每样本的数据位数／8
     wBlockAlign       uint16   // [32,2] 数据块的调整数, 其值为通道数×每样本的数据位值／8
     uiBitsPerSample   uint16   // [34,2] BitsPerSample
-    flag_data         string   // [36,4] Subchunk1ID＂data＂
+    flag_data[4]      byte     // [36,4] Subchunk1ID＂data＂
     subchunk_2_size   uint32   // [40,4] Subchunk2Size
 }
 
@@ -79,19 +80,19 @@ func (this *WavForge) getSampleCount () (int) {
     return this.sampleCount
 }
 
-
-func (this *WavForge) getWavData () (string) {
-    return this.getWavHeader() + this.output
+func (this *WavForge) getWavData () ([]byte) {
+    return append(this.getWavHeader(), ([]byte(this.output))...)
 }
 
-func (this *WavForge) getWavHeader () (header string) {
+// Generate the WAV header.
+func (this *WavForge) getWavHeader () (header []byte) {
     subchunk_2_size := (float64(this.getSampleCount())) * (float64(this.channels)) * this.bitsPerSample / 8
 
     var wavHeader WavHeader
-    wavHeader.flag_RIFF        = "RIFF"
+    copy(wavHeader.flag_RIFF[:], "RIFF")
     wavHeader.chunkSize        = uint32(subchunk_2_size + 36)
-    wavHeader.flag_WAVE        = "WAVE"
-    wavHeader.flag_fmt         = "fmt"
+    copy(wavHeader.flag_WAVE[:], "WAVE")
+    copy(wavHeader.flag_fmt[:], "fmt")
     wavHeader.subchunk_1_size  = 16
     wavHeader.wFormatTag       = 1
     wavHeader.wChannels        = uint16(this.channels)
@@ -99,31 +100,19 @@ func (this *WavForge) getWavHeader () (header string) {
     wavHeader.dwAvgBytesPerSec = uint32(this.sampleRate * (float64(this.channels)) * this.bitsPerSample / 8)
     wavHeader.wBlockAlign      = uint16((float64(this.channels)) * this.bitsPerSample / 8)
     wavHeader.uiBitsPerSample  = uint16(this.bitsPerSample)
-    wavHeader.flag_data        = "data"
+    copy(wavHeader.flag_data[:], "data")
     wavHeader.subchunk_2_size  = uint32(subchunk_2_size)
 
-    header = fmt.Sprintf("%s%d%s%s%d%d%d%d%d%d%d%s%d",
-        wavHeader.flag_RIFF,
-        wavHeader.chunkSize,
-        wavHeader.flag_WAVE,
-        wavHeader.flag_fmt,
-        wavHeader.subchunk_1_size,
-        wavHeader.wFormatTag,
-        wavHeader.wChannels,
-        wavHeader.dwSamplesPerSec,
-        wavHeader.dwAvgBytesPerSec,
-        wavHeader.wBlockAlign,
-        wavHeader.uiBitsPerSample,
-        wavHeader.flag_data,
-        wavHeader.subchunk_2_size,
-    )
+    // Reference: http://www.golangtc.com/t/54210b56320b52379100000d
+    // log.Info(unsafe.Sizeof(wavHeader)) 
+    header = (*[44]byte)(unsafe.Pointer(&wavHeader))[:]
     return 
 }
 
-// Encodes a sample
+// Encodes a sample.
 func (this *WavForge) EncodeSample (number float64) (encodedStr string, err error) {
     max := math.Pow(2, this.bitsPerSample)
-    if number > 0 {
+    if number < 0 {
         number += max
     }
     if number >= max {
@@ -135,15 +124,18 @@ func (this *WavForge) EncodeSample (number float64) (encodedStr string, err erro
         }
     }
     charSlice := make([]string, 0)
-    for {
-        charSlice = append(charSlice, (string(rune((int(math.Floor(number))) % 256))))
-        number = math.Floor(number / 256)
-        if number <= 0 {
-            break
+    if number > 0 {
+        for {
+            mod := string(rune((int(math.Floor(number))) % 256))
+            charSlice = append(charSlice, mod)
+            number = math.Floor(number / 256)
+            if number == 0 {
+                break
+            }
         }
     }
-    for i := 0; i < - (-(int(this.bitsPerSample)) >> 3) - len(charSlice); i++ {
-        charSlice = append(charSlice, (string(rune(0))))
+    for i := 0; i < -(-(int(this.bitsPerSample)) >> 3) - len(charSlice); i++ {
+        charSlice = append(charSlice, (string(0)))
     }
     encodedStr = strings.Join(charSlice, "")
     return
