@@ -10,7 +10,7 @@ package wavemix
 import (
     "errors"
     "fmt"
-    // "github.com/qiniu/log"
+    "github.com/qiniu/log"
     "math"
     "strings"
     "unsafe"
@@ -21,14 +21,14 @@ type WavForge struct {
     sampleRate     float64  // The sample rate at which the sample_count will be generated at.
     bitsPerSample  float64  // Maximum number of bits per sample.
     sampleCount    int      // Store the number of samples that have been generated.
-    output         string   // Contains the samples.
+    output         []byte   // Contains the samples.
 }
 
 type WavHeader struct {
     flag_RIFF[4]      byte     // [0,4]  ChunkID "RIFF"
     chunkSize         uint32   // [4,4]  ChunkSize
     flag_WAVE[4]      byte     // [8,4]  Format "WAVE"
-    flag_fmt[3]       byte     // [12,4] Subchunk1ID "fmt"
+    flag_fmt[4]       byte     // [12,4] Subchunk1ID "fmt "
     subchunk_1_size   uint32   // [16,4] Subchunk1Size: 16 for PCM
     wFormatTag        uint16   // [20,2] AudioFormat: 1 for PCM
     wChannels         uint16   // [22,2] NumChannels: 1 for mono, 2 for stereo
@@ -45,7 +45,6 @@ func (this *WavForge) InitConfig() () {
     this.sampleRate = 44100
     this.bitsPerSample = 16
     this.sampleCount = 0
-    this.output = ""
     return
 }
 
@@ -86,13 +85,16 @@ func (this *WavForge) getWavData () ([]byte) {
 
 // Generate the WAV header.
 func (this *WavForge) getWavHeader () (header []byte) {
-    subchunk_2_size := (float64(this.getSampleCount())) * (float64(this.channels)) * this.bitsPerSample / 8
+    subchunk_2_size := uint32(this.getSampleCount() * this.channels * (int(this.bitsPerSample)) / 8)
+
+    log.Info(this.getSampleCount())
+    log.Info(subchunk_2_size)
 
     var wavHeader WavHeader
     copy(wavHeader.flag_RIFF[:], "RIFF")
-    wavHeader.chunkSize        = uint32(subchunk_2_size + 36)
+    wavHeader.chunkSize        = subchunk_2_size + 36
     copy(wavHeader.flag_WAVE[:], "WAVE")
-    copy(wavHeader.flag_fmt[:], "fmt")
+    copy(wavHeader.flag_fmt[:], "fmt ")
     wavHeader.subchunk_1_size  = 16
     wavHeader.wFormatTag       = 1
     wavHeader.wChannels        = uint16(this.channels)
@@ -104,13 +106,13 @@ func (this *WavForge) getWavHeader () (header []byte) {
     wavHeader.subchunk_2_size  = uint32(subchunk_2_size)
 
     // Reference: http://www.golangtc.com/t/54210b56320b52379100000d
-    // log.Info(unsafe.Sizeof(wavHeader)) 
+    log.Info(unsafe.Sizeof(wavHeader)) 
     header = (*[44]byte)(unsafe.Pointer(&wavHeader))[:]
     return 
 }
 
 // Encodes a sample.
-func (this *WavForge) EncodeSample (number float64) (encodedStr string, err error) {
+func (this *WavForge) EncodeSample (number float64) (byteArr []byte, err error) {
     max := math.Pow(2, this.bitsPerSample)
     if number < 0 {
         number += max
@@ -123,21 +125,19 @@ func (this *WavForge) EncodeSample (number float64) (encodedStr string, err erro
             return
         }
     }
-    charSlice := make([]string, 0)
     if number > 0 {
         for {
-            mod := string(rune((int(math.Floor(number))) % 256))
-            charSlice = append(charSlice, mod)
+            mod := uint8((int(math.Floor(number))) % 256)
+            byteArr = append(byteArr, mod)
             number = math.Floor(number / 256)
             if number == 0 {
                 break
             }
         }
     }
-    for i := 0; i < -(-(int(this.bitsPerSample)) >> 3) - len(charSlice); i++ {
-        charSlice = append(charSlice, (string(0)))
+    for i := 0; i < -(-(int(this.bitsPerSample)) >> 3) - len(byteArr); i++ {
+        byteArr = append(byteArr, uint8(0))
     }
-    encodedStr = strings.Join(charSlice, "")
     return
 }
 
@@ -160,18 +160,21 @@ func (this *WavForge) synthesizeSine (frequency float64, volume float64, seconds
             wingRatio = 1.0
         }
         // Add a sample for each channel
-        encodedStr, err := this.EncodeSample(volume * b * wingRatio * math.Sin(2 * math.Pi * i * frequency / this.sampleRate))
+        byteArr, err := this.EncodeSample(volume * b * wingRatio * math.Sin(2 * math.Pi * i * frequency / this.sampleRate))
         if err != nil {
             // TODO
         }
-        this.output += strings.Repeat(encodedStr, this.channels)
+        for j := 0; j < this.channels - 1; j++ {
+            byteArr = append(byteArr, byteArr...)
+        }
+        this.output = append(this.output, byteArr...)
         this.sampleCount++
     }
     return
 }
 
 
-func (this *WavForge) CreateWave () (result string, err error) {
+func (this *WavForge) CreateWave () (err error) {
     baseFrequency := 18000
     characters    := "0123456789abcdefghijklmnopqrstuv"
     period        := 0.0872
@@ -187,7 +190,6 @@ func (this *WavForge) CreateWave () (result string, err error) {
         this.synthesizeSine(17800, 0.6, period / 2.0 * 1.4)
         this.synthesizeSine(frequency[pos], 0.6, period / 2.0 * 0.6)
     }
-    result = this.output
     return
 }
 
