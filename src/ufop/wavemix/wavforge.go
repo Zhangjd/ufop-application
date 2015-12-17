@@ -1,6 +1,6 @@
 /**
  * Author: Zhangjd
- * Date: December 13th, 2015
+ * Date: December 17th, 2015
  * Description: Sound synthesis and wave file generation in Golang
  * Reference: https://github.com/sk89q/WavForge
  */
@@ -10,7 +10,6 @@ package wavemix
 import (
     "errors"
     "fmt"
-    "github.com/qiniu/log"
     "math"
     "strings"
     "unsafe"
@@ -87,9 +86,6 @@ func (this *WavForge) getWavData () ([]byte) {
 func (this *WavForge) getWavHeader () (header []byte) {
     subchunk_2_size := uint32(this.getSampleCount() * this.channels * (int(this.bitsPerSample)) / 8)
 
-    log.Info(this.getSampleCount())
-    log.Info(subchunk_2_size)
-
     var wavHeader WavHeader
     copy(wavHeader.flag_RIFF[:], "RIFF")
     wavHeader.chunkSize        = subchunk_2_size + 36
@@ -106,7 +102,6 @@ func (this *WavForge) getWavHeader () (header []byte) {
     wavHeader.subchunk_2_size  = uint32(subchunk_2_size)
 
     // Reference: http://www.golangtc.com/t/54210b56320b52379100000d
-    log.Info(unsafe.Sizeof(wavHeader)) 
     header = (*[44]byte)(unsafe.Pointer(&wavHeader))[:]
     return 
 }
