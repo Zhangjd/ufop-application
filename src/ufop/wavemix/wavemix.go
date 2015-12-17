@@ -1,6 +1,6 @@
 /**
  * Author: Zhangjd
- * Date: December 8th, 2015
+ * Date: December 17th, 2015
  * Reference: http://developer.qiniu.com/docs/v6/api/reference/fop/pfop/pfop.html
  * Description: 声波合成模块
  */
@@ -13,6 +13,7 @@ import (
     "io/ioutil"
     "github.com/qiniu/api.v6/auth/digest"
     "github.com/qiniu/log"
+    "math"
     "os"
     "os/exec"
     "regexp"
@@ -41,7 +42,7 @@ func (this *WaveMixer) InitConfig(jobConf string) (err error) {
 }
 
 func (this *WaveMixer) Do(req ufop.UfopRequest) (result interface{}, resultType int, contentType string, err error) {
-    duration, parseErr := this.parseVideoDuration("/Users/Zhangjd/Downloads/01.mp4")
+    duration, parseErr := this.parseVideoDuration("00.mp4")
     if parseErr != nil {
         log.Error(parseErr)
         err = parseErr
@@ -55,8 +56,8 @@ func (this *WaveMixer) Do(req ufop.UfopRequest) (result interface{}, resultType 
     output := wav.getWavData()
     // fmt.Println(output)
     
-    userFile := "test.wav"
     // Create creates the named file with mode 0666 (before umask), truncating it if it already exists
+    userFile := "test.wav"
     fout, err := os.Create(userFile)
     defer fout.Close()
     if err != nil {
@@ -65,6 +66,11 @@ func (this *WaveMixer) Do(req ufop.UfopRequest) (result interface{}, resultType 
     }
     fout.Write(output)
 
+    rscode := [] string {"uv8e463l175lsiijdq4t"}
+    tempTxtFile, _ := this.createTxtFile(duration, rscode)
+    this.mergeWavIntoMp3(tempTxtFile)
+    defer os.Remove(tempTxtFile)
+
     return
 }
 
@@ -72,8 +78,57 @@ func (this *WaveMixer) parse(cmd string) (format string, mime string, bucket str
     return
 }
 
+func (this *WaveMixer) createTxtFile (duration int, rscode []string) (txtFile string, err error) {
+    repeatCount := math.Floor(float64(duration) / float64(len(rscode)) / 1.74)
+    tmpTxtFile, sErr := ioutil.TempFile("", "create_sound_")
+    if sErr != nil {
+        err = errors.New(fmt.Sprintf("open temp file failed, %s", sErr.Error()))
+        return
+    }
+    for i := 0.0; i < repeatCount; i++ {
+        _, sCpErr := tmpTxtFile.WriteString("file '/Users/Zhangjd/IdeaProjects/ufop/bin/test.wav' \n")
+        if sCpErr != nil {
+            err = errors.New(fmt.Sprintf("save second first tmp file failed, %s", sCpErr.Error()))
+            return
+        }
+    }
+    txtFile = tmpTxtFile.Name()
+    tmpTxtFile.Close()
+    return
+}
+
+func (this *WaveMixer) mergeWavIntoMp3 (txtFile string) () {
+    outputMp3FileName := "/Users/Zhangjd/IdeaProjects/ufop/bin/output.mp3"
+    mergeCmdParams := []string{
+        "-y",
+        "-v", "error",
+        "-f", "concat",
+        "-i", txtFile,
+        "-ar", "44100",
+        "-ab", "128k",
+        outputMp3FileName,
+    }
+    mergeCmd := exec.Command("ffmpeg", mergeCmdParams...)
+    stdErrPipe, pipeErr := mergeCmd.StderrPipe()
+    if pipeErr != nil {
+        fmt.Sprintf("open exec stderr pipe error, %s", pipeErr.Error())
+    }
+    startErr := mergeCmd.Start();
+    if startErr != nil {
+        fmt.Sprintf("start ffmpeg command error, %s", startErr.Error())
+    }
+    stdErrData, readErr := ioutil.ReadAll(stdErrPipe)
+    if readErr != nil {
+        fmt.Sprintf("read ffmpeg command stderr error, %s", readErr.Error())
+    }
+    if string(stdErrData) != "" {
+        log.Info(string(stdErrData))
+    }
+    mergeCmd.Wait()
+}
+
 // 获取视频长度
-func (this *WaveMixer) parseVideoDuration(fileName string) (result int, err error){
+func (this *WaveMixer) parseVideoDuration(fileName string) (result int, err error) {
     // prepare for ffmpeg
     mergeCmdParams := []string{
         "-i", fileName,
