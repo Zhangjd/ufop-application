@@ -50,11 +50,15 @@ func (this *WaveMixer) Do(req ufop.UfopRequest) (result interface{}, resultType 
     }
     log.Info(duration)
 
-    var wav WavForge
-    wav.InitConfig()
-    wav.CreateWave()
-    output := wav.getWavData()
-    // fmt.Println(output)
+    var wavForge WavForge
+    wavForge.initConfig()
+    createWaveErr := wavForge.encodeWave("uv8e463l175lsiijdq4t")
+    if createWaveErr != nil {
+        log.Error(createWaveErr)
+        err = createWaveErr
+        return
+    }
+    output := wavForge.getWavData()
     
     // Create creates the named file with mode 0666 (before umask), truncating it if it already exists
     userFile := "test.wav"
@@ -67,9 +71,20 @@ func (this *WaveMixer) Do(req ufop.UfopRequest) (result interface{}, resultType 
     fout.Write(output)
 
     rscode := [] string {"uv8e463l175lsiijdq4t"}
-    tempTxtFile, _ := this.createTxtFile(duration, rscode)
-    this.mergeWavIntoMp3(tempTxtFile)
+
+    tempTxtFile, createTxtErr := this.createTxtFile(duration, rscode)
+    if createTxtErr != nil {
+        err = createTxtErr
+        return
+    }
     defer os.Remove(tempTxtFile)
+
+    tempMp3File, mergeWavErr := this.mergeWavIntoMp3(tempTxtFile)
+    if mergeWavErr != nil {
+        err = mergeWavErr
+        return
+    }
+    log.Info(tempMp3File)
 
     return
 }
@@ -97,15 +112,16 @@ func (this *WaveMixer) createTxtFile (duration int, rscode []string) (txtFile st
     return
 }
 
-func (this *WaveMixer) mergeWavIntoMp3 (txtFile string) () {
-    outputMp3FileName := "/Users/Zhangjd/IdeaProjects/ufop/bin/output.mp3"
+func (this *WaveMixer) mergeWavIntoMp3 (txtFile string) (outputMp3FileName string, err error) {
+    outputMp3FileName = "/Users/Zhangjd/IdeaProjects/ufop/bin/output.mp3"
     mergeCmdParams := []string{
         "-y",
         "-v", "error",
         "-f", "concat",
         "-i", txtFile,
-        "-ar", "44100",
-        "-ab", "128k",
+        "-acodec", "libmp3lame", // 音频编码
+        "-ar", "44100",          // 音频采样率
+        "-ab", "128k",           // 音频比特率
         outputMp3FileName,
     }
     mergeCmd := exec.Command("ffmpeg", mergeCmdParams...)
@@ -125,6 +141,7 @@ func (this *WaveMixer) mergeWavIntoMp3 (txtFile string) () {
         log.Info(string(stdErrData))
     }
     mergeCmd.Wait()
+    return
 }
 
 // 获取视频长度
