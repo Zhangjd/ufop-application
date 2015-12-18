@@ -175,9 +175,9 @@ func (this *WavForge) encodeWave (uvpmrscode string) (err error) {
         return
     }
     var baseFrequency float64 = 17800
-    characters    := "0123456789abcdefghijklmnopqrstuv"
-    period        := 0.0872
-    volume        := 0.8
+    characters := "0123456789abcdefghijklmnopqrstuv"
+    period     := 0.0872
+    volume     := 0.8
     var frequency [32]float64
     for i := 0; i < len(frequency); i ++ {
         frequency[i] = float64(18000 + i * 64)
