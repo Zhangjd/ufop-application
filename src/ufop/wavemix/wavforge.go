@@ -39,7 +39,7 @@ type WavHeader struct {
     subchunk_2_size   uint32   // [40,4] Subchunk2Size
 }
 
-func (this *WavForge) InitConfig() () {
+func (this *WavForge) initConfig() () {
     this.channels = 2
     this.sampleRate = 44100
     this.bitsPerSample = 16
@@ -47,7 +47,7 @@ func (this *WavForge) InitConfig() () {
     return
 }
 
-func (this *WavForge) SetChannels (channels int) () {
+func (this *WavForge) setChannels (channels int) () {
     this.channels = channels
     return
 }
@@ -56,7 +56,7 @@ func (this *WavForge) getChannels () (int) {
     return this.channels
 }
 
-func (this *WavForge) SetSampleRate (sampleRate float64) () {
+func (this *WavForge) setSampleRate (sampleRate float64) () {
     this.sampleRate = sampleRate
     return
 }
@@ -65,7 +65,7 @@ func (this *WavForge) getSampleRate () (float64) {
     return this.sampleRate
 }
 
-func (this *WavForge) SetBitsPerSample (bitsPerSample float64) () {
+func (this *WavForge) setBitsPerSample (bitsPerSample float64) () {
     this.bitsPerSample = bitsPerSample
     return
 }
@@ -107,7 +107,7 @@ func (this *WavForge) getWavHeader () (header []byte) {
 }
 
 // Encodes a sample.
-func (this *WavForge) EncodeSample (number float64) (byteArr []byte, err error) {
+func (this *WavForge) encodeSample (number float64) (byteArr []byte, err error) {
     max := math.Pow(2, this.bitsPerSample)
     if number < 0 {
         number += max
@@ -136,7 +136,7 @@ func (this *WavForge) EncodeSample (number float64) (byteArr []byte, err error) 
     return
 }
 
-// 合成指定频率的正弦波
+// Generate a sine waveform.
 func (this *WavForge) synthesizeSine (frequency float64, volume float64, seconds float64) () {
     total := math.Floor(this.sampleRate * seconds)
 
@@ -155,7 +155,7 @@ func (this *WavForge) synthesizeSine (frequency float64, volume float64, seconds
             wingRatio = 1.0
         }
         // Add a sample for each channel
-        byteArr, err := this.EncodeSample(volume * b * wingRatio * math.Sin(2 * math.Pi * i * frequency / this.sampleRate))
+        byteArr, err := this.encodeSample(volume * b * wingRatio * math.Sin(2 * math.Pi * i * frequency / this.sampleRate))
         if err != nil {
             // TODO
         }
@@ -168,22 +168,25 @@ func (this *WavForge) synthesizeSine (frequency float64, volume float64, seconds
     return
 }
 
-
-func (this *WavForge) CreateWave () (err error) {
-    baseFrequency := 18000
+// Encode microwave string into sine waveform.
+func (this *WavForge) encodeWave (uvpmrscode string) (err error) {
+    if len(uvpmrscode) != 20 || string(uvpmrscode[:2]) != "uv" {
+        err = errors.New(fmt.Sprintf("Invalid code format!"))
+        return
+    }
+    var baseFrequency float64 = 17800
     characters    := "0123456789abcdefghijklmnopqrstuv"
     period        := 0.0872
+    volume        := 0.8
     var frequency [32]float64
     for i := 0; i < len(frequency); i ++ {
-        frequency[i] = float64(baseFrequency + i * 64)
+        frequency[i] = float64(18000 + i * 64)
     }
-
-    testCode := "uv8e463l175lsiijdq4t"
-    for i := 0; i < len(testCode); i++ {
-        char := testCode[i]
+    for i := 0; i < len(uvpmrscode); i++ {
+        char := uvpmrscode[i]
         pos := strings.Index(characters, (string(char)))
-        this.synthesizeSine(17800, 0.6, period / 2.0 * 1.4)
-        this.synthesizeSine(frequency[pos], 0.6, period / 2.0 * 0.6)
+        this.synthesizeSine(baseFrequency, volume, period * 0.7)
+        this.synthesizeSine(frequency[pos], volume, period * 0.3)
     }
     return
 }
