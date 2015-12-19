@@ -84,7 +84,14 @@ func (this *WaveMixer) Do(req ufop.UfopRequest) (result interface{}, resultType 
         err = mergeWavErr
         return
     }
-    log.Info(tempMp3File)
+
+    outputVideoFile, mixErr := this.mixWave(req.Src.Url, tempMp3File)
+    if mixErr != nil {
+        err = mixErr
+        return
+    }
+
+    log.Info(outputVideoFile)
 
     return
 }
@@ -203,6 +210,10 @@ func (this *WaveMixer) parseVideoDuration(fileName string) (result int, err erro
     return
 }
 
+func (this *WaveMixer) mixWave (videoFile string, waveFile string) (outputVideo string, err error) {
+    // TODO
+    return
+}
 
 
 
