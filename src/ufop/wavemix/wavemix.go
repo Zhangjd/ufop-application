@@ -10,10 +10,12 @@ package wavemix
 import (
     "errors"
     "fmt"
+    "io"
     "io/ioutil"
     "github.com/qiniu/api.v6/auth/digest"
     "github.com/qiniu/log"
     "math"
+    "net/http"
     "os"
     "os/exec"
     "regexp"
@@ -157,38 +159,32 @@ func (this *WaveMixer) parseVideoDuration(fileName string) (result int, err erro
     mergeCmdParams := []string{
         "-i", fileName,
     }
-
     // execute command
     mergeCmd := exec.Command("ffmpeg", mergeCmdParams...)
-
     // Wait will close the pipe after seeing the command exit
     stdErrPipe, pipeErr := mergeCmd.StderrPipe()
     if pipeErr != nil {
         err = errors.New(fmt.Sprintf("open exec stderr pipe error, %s", pipeErr.Error()))
         return
     }
-
     // Starts the specified command but does NOT wait for it to complete
     startErr := mergeCmd.Start();
     if startErr != nil {
         err = errors.New(fmt.Sprintf("start ffmpeg command error, %s", startErr.Error()))
         return
     }
-
     // Reads from stdErrPipe until an error or EOF and returns the data it read
     stdErrData, readErr := ioutil.ReadAll(stdErrPipe)
     if readErr != nil {
         err = errors.New(fmt.Sprintf("read ffmpeg command stderr error, %s", readErr.Error()))
         return
     }
-
     // Waits for the command to exit. It must have been started by Start.
     waitErr := mergeCmd.Wait()
     if waitErr != nil {
         // err = errors.New(fmt.Sprintf("wait ffmpeg to exit error, %s", waitErr))
         // return
     }
-
     // regex
     pattern := "Duration: ([0-9:]+)"
     keyRegx := regexp.MustCompile(pattern)
@@ -210,8 +206,63 @@ func (this *WaveMixer) parseVideoDuration(fileName string) (result int, err erro
     return
 }
 
-func (this *WaveMixer) mixWave (videoFile string, waveFile string) (outputVideo string, err error) {
-    // TODO
+func (this *WaveMixer) mixWave (videoUrl string, waveFile string) (outputVideo string, err error) {
+    // retrieve the first file
+    fResp, fRespErr := http.Get(videoUrl)
+    if fRespErr != nil || fResp.StatusCode != 200 {
+        if fRespErr != nil {
+            err = errors.New(fmt.Sprintf("retrieve first file resource data failed, %s", fRespErr.Error()))
+        } else {
+            err = errors.New(fmt.Sprintf("retrieve first file resource data failed, %s", fResp.Status))
+            if fResp.Body != nil {
+                fResp.Body.Close()
+            }
+        }
+        return
+    }
+    fTmpFp, fErr := ioutil.TempFile("", "first")
+    if fErr != nil {
+        err = errors.New(fmt.Sprintf("open first file temp file failed, %s", fErr.Error()))
+        return
+    }
+    _, fCpErr := io.Copy(fTmpFp, fResp.Body)
+    if fCpErr != nil {
+        err = errors.New(fmt.Sprintf("save first temp file failed, %s", fCpErr.Error()))
+        return
+    }
+    // close the first one
+    fTmpFname := fTmpFp.Name()
+    fTmpFp.Close()
+    fResp.Body.Close()
+
+    outputVideo = "/Users/Zhangjd/IdeaProjects/ufop/bin/output.mp4"
+    mergeCmdParams := []string{
+        "-y",
+        "-v", "error",
+        "-i", fTmpFname,
+        "-i", waveFile,
+        "--filter_complex", "amix=inputs=2:duration=first:dropout_transition=2",
+        "-ar", "44100",          // 音频采样率
+        "-ab", "128k",           // 音频比特率
+        outputVideo,
+    }
+    mergeCmd := exec.Command("ffmpeg", mergeCmdParams...)
+    stdErrPipe, pipeErr := mergeCmd.StderrPipe()
+    if pipeErr != nil {
+        fmt.Sprintf("open exec stderr pipe error, %s", pipeErr.Error())
+    }
+    startErr := mergeCmd.Start();
+    if startErr != nil {
+        fmt.Sprintf("start ffmpeg command error, %s", startErr.Error())
+    }
+    stdErrData, readErr := ioutil.ReadAll(stdErrPipe)
+    if readErr != nil {
+        fmt.Sprintf("read ffmpeg command stderr error, %s", readErr.Error())
+    }
+    if string(stdErrData) != "" {
+        log.Info(string(stdErrData))
+    }
+    mergeCmd.Wait()
     return
 }
 
