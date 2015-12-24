@@ -1,6 +1,6 @@
 /**
  * Author: Zhangjd
- * Date: December 17th, 2015
+ * Date: December 24th, 2015
  * Reference: http://developer.qiniu.com/docs/v6/api/reference/fop/pfop/pfop.html
  * Description: 声波合成模块
  */
@@ -233,6 +233,7 @@ func (this *WaveMixer) mixWave (videoUrl string, waveFile string) (outputVideo s
     fTmpFname := fTmpFp.Name()
     fTmpFp.Close()
     fResp.Body.Close()
+    defer os.Remove(fTmpFname)
 
     // 音频采样率强制44100
     sTmpFp, sErr := ioutil.TempFile("", "sampled")
@@ -241,32 +242,44 @@ func (this *WaveMixer) mixWave (videoUrl string, waveFile string) (outputVideo s
         return
     }
     sTmpFp.Close()
-    sampledVideo := sTmpFp.Name()
+    sTmpName := sTmpFp.Name()
+    sampledVideoTempFile := sTmpName + ".mp4" // append .mp4 suffix to this temp file
+    renameErr := os.Rename(sTmpName, sampledVideoTempFile)
+    if renameErr != nil {
+        err = errors.New(fmt.Sprintf("rename temp file failed, %s", renameErr.Error()))
+        defer os.Remove(sTmpName)
+        return
+    }
+    defer os.Remove(sampledVideoTempFile)
+
     sampleCmdParams := []string{
         "-y",
         "-v", "error",
         "-i", fTmpFname,
         "-i", waveFile,
-        "--filter_complex", "amix=inputs=2:duration=first:dropout_transition=2",
-        "-ar", "44100",          // 音频采样率
-        "-ab", "128k",           // 音频比特率
-        sampledVideo,
+        "-filter_complex", "amix=inputs=2:duration=first:dropout_transition=2",
+        "-ar", "44100",
+        "-ab", "128k",
+        sampledVideoTempFile,
     }
     sampleCmd := exec.Command("ffmpeg", sampleCmdParams...)
     stdErrPipe, pipeErr := sampleCmd.StderrPipe()
     if pipeErr != nil {
         fmt.Sprintf("open exec stderr pipe error, %s", pipeErr.Error())
+        return
     }
     startErr := sampleCmd.Start();
     if startErr != nil {
         fmt.Sprintf("start ffmpeg command error, %s", startErr.Error())
+        return
     }
     stdErrData, readErr := ioutil.ReadAll(stdErrPipe)
     if readErr != nil {
         fmt.Sprintf("read ffmpeg command stderr error, %s", readErr.Error())
+        return
     }
     if string(stdErrData) != "" {
-        log.Info(string(stdErrData))
+        log.Error(string(stdErrData))
     }
     sampleCmd.Wait()
 
@@ -275,30 +288,34 @@ func (this *WaveMixer) mixWave (videoUrl string, waveFile string) (outputVideo s
     mergeCmdParams := []string{
         "-y",
         "-v", "error",
-        "-i", sampledVideo,
+        "-i", sampledVideoTempFile,
         "-i", waveFile,
-        "--filter_complex", "amix=inputs=2:duration=first:dropout_transition=2",
-        "-ar", "44100",          // 音频采样率
-        "-ab", "128k",           // 音频比特率
+        "-filter_complex", "amix=inputs=2:duration=first:dropout_transition=2",
+        "-ar", "44100",
+        "-ab", "128k",
         outputVideo,
     }
     mergeCmd := exec.Command("ffmpeg", mergeCmdParams...)
     stdErrPipe, pipeErr = mergeCmd.StderrPipe()
     if pipeErr != nil {
         fmt.Sprintf("open exec stderr pipe error, %s", pipeErr.Error())
+        return
     }
     startErr = mergeCmd.Start();
     if startErr != nil {
         fmt.Sprintf("start ffmpeg command error, %s", startErr.Error())
+        return
     }
     stdErrData, readErr = ioutil.ReadAll(stdErrPipe)
     if readErr != nil {
         fmt.Sprintf("read ffmpeg command stderr error, %s", readErr.Error())
+        return
     }
     if string(stdErrData) != "" {
-        log.Info(string(stdErrData))
+        log.Error(string(stdErrData))
     }
     mergeCmd.Wait()
+
     return
 }
 
