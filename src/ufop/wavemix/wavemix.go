@@ -71,6 +71,7 @@ func (this *WaveMixer) Do(req ufop.UfopRequest) (result interface{}, resultType 
         return
     }
     fout.Write(output)
+    defer os.Remove(userFile)
 
     rscode := [] string {"uv8e463l175lsiijdq4t"}
 
