@@ -4,6 +4,7 @@ go:
   - 1.5
 
 install:
+  - export GOPATH=$PWD:$GOPATH
   - go get -u github.com/qiniu/api.v6
   - go get -u golang.org/x/text/encoding/simplifiedchinese
 
