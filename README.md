@@ -1,14 +1,14 @@
-# ufop-application
-基于七牛ufop的自定义处理实现
+# ufop-application [![Build Status](https://travis-ci.org/Zhangjd/ufop-application.svg)](https://travis-ci.org/Zhangjd/ufop-application)
+基于七牛ufop的自定义处理程序
 
-## Configure
+## Installation
 
 ```
 go get -u github.com/qiniu/api.v6
 go get -u golang.org/x/text/encoding/simplifiedchinese
 ```
 
-## Build tutorial
+## Build Tutorial
 
 * 设置环境变量 $GOPATH 和 $GOBIN
 * 修改build.sh中的环境变量
@@ -16,7 +16,7 @@ go get -u golang.org/x/text/encoding/simplifiedchinese
 * 本地调试版本请进入src目录, 执行go install qufop.go
 * 部署远程版本请进入src目录, 执行./build.sh
 
-## Local test
+## Local Test
 
 Command: qufop \<qufop-config-file>
 
@@ -33,7 +33,7 @@ Content-Type: application/json
 }
 ```
 
-## Remote ufop call
+## Remote Ufop Call
 
 Reference: 
 
@@ -44,7 +44,7 @@ http://developer.qiniu.com/docs/v6/api/reference/fop/pfop/prefop.html
 2. 七牛服务端按顺序完成所有指定的云处理操作后，会将处理结果状态提交到\<persistentNotifyUrl>指向的网址，用作异步回调处理
 3. 客户端可以使用\<persistentId>来主动查询持久化处理的执行状态
 
-## Module usage
+## Module Usage
 
 ### 视频合成 (画面左右放置, 分别占一半大小)
 
