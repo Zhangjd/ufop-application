@@ -1,0 +1,8 @@
+language: go
+
+go:
+  - 1.5
+
+install:
+  - go get github.com/qiniu/api.v6
+  - go get golang.org/x/text/encoding/simplifiedchinese
